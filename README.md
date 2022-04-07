@@ -16,3 +16,14 @@ func main() {
     }
 }
 ```
+
+Also supports different periods with `time.Duration`, e.g.
+```go
+limiter := ratelimiter.NewWithPer(10, time.Second * 5) // allow 10 requests in 5 seconds
+
+for i := 0; i < 1000; i++ {
+    limiter.Aquire()
+
+    // do some work
+}
+```
