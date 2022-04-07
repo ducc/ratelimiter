@@ -8,20 +8,30 @@ import (
 )
 
 type RateLimiter struct {
-	maxPerMinute int
-	lock         *sync.Mutex
-	count        int
-	lastPeriod   time.Time
+	max        int
+	per        time.Duration
+	lock       *sync.Mutex
+	count      int
+	lastPeriod time.Time
 }
 
 func New(maxPerMinute int) *RateLimiter {
+	return NewWithPer(maxPerMinute, time.Minute)
+}
+
+func NewWithPer(max int, per time.Duration) *RateLimiter {
 	return &RateLimiter{
-		maxPerMinute: maxPerMinute,
-		lock:         &sync.Mutex{},
+		max:  max,
+		per:  per,
+		lock: &sync.Mutex{},
 	}
 }
 
 func (r *RateLimiter) Aquire() {
+	r.AquireWithCount(1)
+}
+
+func (r *RateLimiter) AquireWithCount(increment int) {
 	r.lock.Lock()
 
 	currentTime := time.Now()
@@ -34,23 +44,22 @@ func (r *RateLimiter) Aquire() {
 		return
 	}
 
-	// the minute is up so the timer can be reset
-	if currentTime.Truncate(time.Minute).After(r.lastPeriod.Truncate(time.Minute)) {
+	// the per is up so the timer can be reset
+	if currentTime.Truncate(r.per).After(r.lastPeriod.Truncate(r.per)) {
 		r.lastPeriod = currentTime
 		r.count = 1
 		r.lock.Unlock()
 		return
 	}
 
-	r.count++
-
-	// this request is the last that can be done this minute, sleep until the minute is up
-	if r.count == r.maxPerMinute {
-		nextPeriod := currentTime.Add(time.Minute).Truncate(time.Minute)
+	// this request is the last that can be done this per, sleep until the per is up
+	if r.count == r.max {
+		nextPeriod := currentTime.Add(r.per).Truncate(r.per)
 		waitDuration := nextPeriod.Sub(currentTime)
 		logrus.Debugf("ratelimiter: sleeping %s", waitDuration.String())
 		time.Sleep(waitDuration)
 	}
+	r.count++
 
 	r.lock.Unlock()
 }
