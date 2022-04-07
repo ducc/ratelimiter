@@ -1,5 +1,5 @@
 # Rate limiter
-Limit x number of actions per minute
+Simple thread safe ratelimiter to limit x number of actions per minute. Built upon a mutex.
 
 ## Importing
 ```
