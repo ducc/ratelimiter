@@ -1,9 +1,14 @@
 # Rate limiter
 Limit x number of actions per minute
 
+## Importing
+```
+import "github.com/ducc/ratelimiter"
+```
+
 ## Usage
 This example allows 50 actions per minute and attempts to do 1000 (therefore it will take 20 minutes).
-```
+```go
 import "github.com/ducc/ratelimiter"
 
 func main() {
@@ -27,3 +32,6 @@ for i := 0; i < 1000; i++ {
     // do some work
 }
 ```
+
+### Contributing
+Do it
