@@ -7,12 +7,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var DefaultWaitCallback = func(waitDuration time.Duration) {
+	logrus.Debugf("ratelimiter: sleeping %s", waitDuration.String())
+	time.Sleep(waitDuration)
+}
+
 type RateLimiter struct {
 	max        int
 	per        time.Duration
 	lock       *sync.Mutex
 	count      int
 	lastPeriod time.Time
+	callback   func(waitDuration time.Duration)
 }
 
 func New(maxPerMinute int) *RateLimiter {
@@ -20,10 +26,15 @@ func New(maxPerMinute int) *RateLimiter {
 }
 
 func NewWithPer(max int, per time.Duration) *RateLimiter {
+	return NewWithPerAndCallback(max, per, DefaultWaitCallback)
+}
+
+func NewWithPerAndCallback(max int, per time.Duration, callback func(waitDuration time.Duration)) *RateLimiter {
 	return &RateLimiter{
-		max:  max,
-		per:  per,
-		lock: &sync.Mutex{},
+		max:      max,
+		per:      per,
+		lock:     &sync.Mutex{},
+		callback: callback,
 	}
 }
 
@@ -56,8 +67,9 @@ func (r *RateLimiter) AquireWithCount(increment int) {
 	if r.count == r.max {
 		nextPeriod := currentTime.Add(r.per).Truncate(r.per)
 		waitDuration := nextPeriod.Sub(currentTime)
-		logrus.Debugf("ratelimiter: sleeping %s", waitDuration.String())
-		time.Sleep(waitDuration)
+		if r.callback != nil {
+			r.callback(waitDuration)
+		}
 	}
 	r.count++
 
